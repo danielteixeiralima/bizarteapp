@@ -1,16 +1,21 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, Empresa, Resposta, Usuario, OKR, KR
+from models import db, Empresa, Resposta, Usuario, OKR, KR, PostInstagram
 import requests
 import json
 import time
+import os
 from flask_migrate import Migrate
 from flask import jsonify
+import pandas as pd
+import traceback
 
+
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 app = Flask(__name__)
 app.secret_key = 'Omega801'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:\\Users\\USER\\PycharmProjects\\bizarte\\test.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'test.db')
 migrate = Migrate(app, db)
 
 
@@ -37,12 +42,52 @@ def cadastrar_empresa():
             tamanho_empresa=request.form.get('tamanho_empresa'),
             descricao_empresa=request.form.get('descricao_empresa'),
             objetivos_principais=request.form.get('objetivos_principais'),
-            historico_interacoes=request.form.get('historico_interacoes')
+            historico_interacoes=request.form.get('historico_interacoes'),
+            vincular_instagram=request.form.get('vincular_instagram')
         )
         db.session.add(empresa)
         db.session.commit()
         return redirect(url_for('listar_empresas'))
     return render_template('cadastrar_empresa.html')
+
+@app.route('/cadastrar/post', methods=['POST'])
+def cadastrar_post():
+        empresas = Empresa.query.filter(Empresa.vincular_instagram.isnot(None)).all()
+
+        posts = PostInstagram(
+            timestamp=request.form.get('timestamp'),
+            caption=request.form.get('caption'),
+            like_count=request.form.get('like_count'),
+            comments_count=request.form.get('comments_count'),
+            reach=request.form.get('reach'),
+            percentage=request.form.get('percentage'),
+            media_product_type=request.form.get('media_product_type'),
+            plays = request.form.get('plays'),
+            saved=request.form.get('saved')
+        )
+        db.session.add(posts)
+        db.session.commit()
+        return jsonify({'message': 'Dados inseridos com sucesso!'} ), 201
+
+@app.route('/api/posts', methods=['GET'])
+def api_posts():
+    empresa_selecionada = request.args.get('empresa')
+
+    if empresa_selecionada:
+        posts = PostInstagram.query.filter(PostInstagram.nome_empresa == empresa_selecionada).all()
+    else:
+        posts = PostInstagram.query.all()
+
+    posts = [post.to_dict() for post in posts]  # Convert each post to a dictionary
+    return jsonify(posts)
+
+@app.route('/listar/posts', methods=['GET'])
+def listar_posts():
+    empresas = Empresa.query.filter(Empresa.vincular_instagram.isnot(None)).all()
+    
+    posts = PostInstagram.query.all()
+    print(posts)
+    return render_template('listar_posts.html', posts=posts, empresas=empresas)
 
 @app.route('/atualizar/empresa/<int:id>', methods=['GET', 'POST'])
 def atualizar_empresa(id):
@@ -57,9 +102,12 @@ def atualizar_empresa(id):
         empresa.descricao_empresa = request.form['descricao_empresa']
         empresa.objetivos_principais = request.form['objetivos_principais']
         empresa.historico_interacoes = request.form['historico_interacoes']
+        empresa.vincular_instagram = request.form['vincular_instagram']
         db.session.commit()
         return redirect(url_for('listar_empresas'))
     return render_template('atualizar_empresa.html', empresa=empresa)
+
+
 
 @app.route('/deletar_empresa/<int:id>', methods=['POST'])
 def deletar_empresa(id):
@@ -150,7 +198,41 @@ def planejamento_redes():
     return render_template('planejamento_redes.html', empresas=empresas)
 
 
+@app.route('/analise_posts', methods=['GET', 'POST'])
+def analise_posts():
+    try:
+        if request.method == 'POST':
+            posts = PostInstagram(
+                id_empresa=request.form.get('id_empresa'),
+                timestamp=request.form.get('timestamp'),
+                caption=request.form.get('caption'),
+                like_count=request.form.get('like_count'),
+                comments_count=request.form.get('comments_count'),
+                reach=request.form.get('reach'),
+                percentage=request.form.get('percentage'),
+                media_product_type=request.form.get('media_product_type'),
+                plays=request.form.get('plays'),
+                saved=request.form.get('saved'),
+                nome_empresa=request.form.get('nome_empresa')
+            )
+            db.session.add(posts)
+            db.session.commit()
+    except Exception as e:
+        print("Exceção ocorreu: ", e)
+        traceback.print_exc()
+        return jsonify({'message': 'Dados inseridos com falha meno!'}), 201
 
+    empresas = Empresa.query.filter(Empresa.vincular_instagram.isnot(None)).all()
+
+    return render_template('analise_posts.html', empresas=empresas)
+
+
+@app.route('/deletar_posts/<int:id>', methods=['POST'])
+def deletar_posts(id):
+    post = PostInstagram.query.get_or_404(id)
+    db.session.delete(post)
+    db.session.commit()
+    return redirect(url_for('listar_posts'))
 
 @app.route('/responder_pergunta/<int:id>', methods=['GET', 'POST'])
 def responder_pergunta(id):
@@ -369,6 +451,41 @@ def get_objectives(empresa_id):
                 objectives.append({'id': okr.id, 'objetivo': objetivo})
     return jsonify(objectives)
 
+@app.route('/posts_instagram/<int:empresa_id>', methods=['GET', 'POST'])
+def posts_instagram(empresa_id):
+    
+    data = request.get_json()  # Obter os dados JSON enviados pelo cliente
+    df = pd.DataFrame(data)  # Converter os dados em um DataFrame do Pandas
+        
+
+    df.columns = ['PostName', 'Date', 'MediaReach', 'LikeCount', 'CommentsCount', 'Engajamento', 'ReelPlays']
+   
+
+    df = df.sort_values(by='Date', ascending=False)
+    df = df.head(15)
+    todos_posts_dict = df.to_dict('records')
+
+    todos_posts_str = ""
+    for i, post in enumerate(todos_posts_dict, start=1):
+        todos_posts_str += f"\nPost {i}:\n"
+        todos_posts_str += f"Nome do Post: {post['PostName']}\n"
+        todos_posts_str += f"Data: {post['Date']}\n"
+        todos_posts_str += f"Audiência: {post['MediaReach']}\n"
+        todos_posts_str += f"Número de likes: {post['LikeCount']}\n"
+        todos_posts_str += f"Número de comentários: {post['CommentsCount']}\n"
+        todos_posts_str += f"Engajamento: {post['Engajamento']}\n"
+        todos_posts_str += f"Número de reproduções (reels): {post['ReelPlays']}\n"
+
+    pergunta = [{"role": "system", "content": "Você está conversando com um assistente de IA. Como posso ajudá-lo?"},
+                {"role": "user",
+                 "content": f"Aqui estão todos os posts dos últimos 15 dias:{todos_posts_str}\nPreciso que você analise de acordo com o engajamento e Audiencia esses posts e me diga: 1 - os 3 posts com melhores resultados, a data e porquê 2 - os 3 posts com piores resultados, a data e porquê. 4 - insights do mês (o que temos que melhorar, o que fizemos bem)"}]
+
+    resposta_gpt = perguntar_gpt(pergunta)
+
+    if request.method == 'POST':
+        return redirect(url_for('posts_instagram'))
+
+        # ... restante do seu código para analisar o DataFrame ...
 
 if __name__ == '__main__':
     with app.app_context():

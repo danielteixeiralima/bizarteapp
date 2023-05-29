@@ -15,6 +15,7 @@
                 <th>Descrição da Empresa</th>
                 <th>Objetivos Principais</th>
                 <th>Histórico de Interações</th>
+                <th>Instagram</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -30,6 +31,7 @@
                 <td>{{ empresa.descricao_empresa }}</td>
                 <td>{{ empresa.objetivos_principais }}</td>
                 <td>{{ empresa.historico_interacoes }}</td>
+                <td>{{ "Sim" if empresa.vincular_instagram else "Não" }}</td>
                 <td>
                     <a href="{{ url_for('atualizar_empresa', id=empresa.id) }}" class="btn btn-primary">Atualizar</a>
                     <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal{{empresa.id}}">Deletar</button>

@@ -2,6 +2,13 @@
 
 {% block content %}
     <h1>Atualizar Empresa</h1>
+    <script>
+        var empresa = JSON.parse(localStorage.getItem('listaEmpresa'));
+        var empresas = [];
+        for (var i = 0; i < empresa.length; i++) {
+            empresas.push(empresa[i].name); // Adiciona o nome da empresa ao array 'lista'
+        }
+    </script>
     <form class="form-style" action="{{ url_for('atualizar_empresa', id=empresa.id) }}" method="post">
         <label for="nome_contato">Nome do Contato:</label><br>
         <input type="text" id="nome_contato" name="nome_contato" value="{{ empresa.nome_contato }}"><br>
@@ -21,6 +28,24 @@
         <textarea id="objetivos_principais" name="objetivos_principais">{{ empresa.objetivos_principais }}</textarea><br>
         <label for="historico_interacoes">Histórico de Interações:</label><br>
         <textarea id="historico_interacoes" name="historico_interacoes">{{ empresa.historico_interacoes }}</textarea><br>
+        <label for="vincular_instagram">Vincular conta do Instagram:</label><br>
+        <select id="vincular_instagram" name="vincular_instagram"></select><br>
         <input type="submit" value="Atualizar">
     </form>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            var select = document.getElementById('vincular_instagram');
+            empresas.unshift("");
+            for(var i = 0; i < empresas.length + 1; i++) {
+                var opt = document.createElement('option');
+                
+                opt.value = empresas[i];
+                opt.innerHTML = empresas[i];
+                if (empresas[i] == "{{ empresa.vincular_instagram }}") {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            }
+        });
+    </script>
 {% endblock %}

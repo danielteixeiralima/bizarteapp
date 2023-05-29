@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lista de Posts</title>
+  <style>
+    /* Adicione seus estilos CSS aqui, se necessário */
+  </style>
+</head>
+<body>
+  <select id="empresa" name="empresa">
+    {% for empresa in empresas %}
+      <option value="{{ empresa.vincular_instagram }}">{{ empresa.vincular_instagram }}</option>
+    {% endfor %}
+  </select>
+  <br>
+
+  <button id="filtrar-posts" onclick="getPosts()">Filtrar Posts</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Caption</th>
+        <th>Like Count</th>
+        <th>Comments Count</th>
+        <th>Reach</th>
+        <th>Percentage</th>
+        <th>Media Product Type</th>
+        <th>Plays</th>
+        <th>Saved</th>
+        <th>Nome da Empresa</th>
+      </tr>
+    </thead>
+    <tbody id="post-table-body" class="styled-table">
+      {% for post in posts %}
+      <tr>
+          <td>{{ post.timestamp }}</td>
+          <td>{{ post.caption }}</td>
+          <td>{{ post.like_count }}</td>
+          <td>{{ post.comments_count }}</td>
+          <td>{{ post.reach }}</td>
+          <td>{{ post.percentage }}</td>
+          <td>{{ post.media_product_type }}</td>
+          <td>{{ post.plays }}</td>
+          <td>{{ post.saved }}</td>
+          <td>{{ post.nome_empresa }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    document.getElementById('filtrar-posts').addEventListener('click', getPosts);
+
+    function getPosts() {
+      var empresa = document.getElementById('empresa').value;
+      
+      console.log(empresa)
+      fetch('/api/posts?empresa=' + empresa)
+          .then(response => response.json())
+          .then(data => populateTable(data));
+  }
+
+    function populateTable(data) {
+        var tbody = document.getElementById('post-table-body');
+        tbody.innerHTML = '';
+    
+        for (var i = 0; i < data.length; i++) {
+            var tr = document.createElement('tr');
+            
+            var fields = ['timestamp', 'caption', 'like_count', 'comments_count', 'reach', 'percentage', 'media_product_type', 'plays', 'saved', 'nome_empresa'];
+            for (var j = 0; j < fields.length; j++) {
+                var td = document.createElement('td');
+                td.textContent = data[i][fields[j]];
+                tr.appendChild(td);
+            }
+            
+            var td = document.createElement('td');
+            var updateButton = document.createElement('button');
+            var deleteButton = document.createElement('button');
+            updateButton.textContent = 'Atualizar';
+            deleteButton.textContent = 'Deletar';
+            updateButton.classList.add('btn', 'btn-primary');
+            deleteButton.classList.add('btn', 'btn-danger');
+
+            updateButton.onclick = function(id) { window.location.href = '/atualizar_post?id=' + id; }.bind(null, data[i]['id']);
+            deleteButton.onclick = function(id) { window.location.href = '/deletar_post?id=' + id; }.bind(null, data[i]['id']);
+
+            td.appendChild(updateButton);
+            td.appendChild(deleteButton);
+            tr.appendChild(td);
+            
+            tbody.appendChild(tr);
+        }
+    }
+  </script>
+
+{% endblock %}
